@@ -13,11 +13,10 @@ struct NewsArticle {
     image_url: String,
 }
 
-// Define the function to fetch crypto news
 async fn fetch_crypto_news(crypto_name: &str) -> Result<Vec<NewsArticle>, Box<dyn StdError>> {
     let url = format!(
         "https://cryptonews-api.com/api/v1/category?section=general&items=3&token={}&search={}",
-        "tn07ovdewdsh6znt6ar0ps0rb0h2kc1vvrmmgjxh", // Replace with your actual API key
+        "tn07ovdewdsh6znt6ar0ps0rb0h2kc1vvrmmgjxh", 
         crypto_name
     );
 
@@ -46,34 +45,28 @@ async fn fetch_crypto_news(crypto_name: &str) -> Result<Vec<NewsArticle>, Box<dy
 
 #[tokio::main]
 async fn main() {
-    // Define the CORS filter
     let cors = warp::cors()
-        .allow_any_origin()  // Allow requests from any origin
-        .allow_method(Method::GET)  // Allow GET requests
-        .allow_header("Content-Type");  // Allow the Content-Type header
+        .allow_any_origin()  
+        .allow_method(Method::GET)  
+        .allow_header("Content-Type");  
 
-    // Route for fetching crypto news
     let crypto_news = warp::path!("news")
         .and(warp::get())
         .and(warp::query::<std::collections::HashMap<String, String>>())
         .and_then(|params: std::collections::HashMap<String, String>| async move {
-            let default_name = String::new();  // Create a long-lived value
-            let crypto_name = params.get("crypto").unwrap_or(&default_name);  // Borrow the long-lived value
+            let default_name = String::new();  
+            let crypto_name = params.get("crypto").unwrap_or(&default_name);  
 
-            // Perform the async operation and then return the result
             match fetch_crypto_news(crypto_name).await {
                 Ok(news) => Ok::<warp::reply::Json, warp::Rejection>(warp::reply::json(&news)),
                 Err(_) => Ok::<warp::reply::Json, warp::Rejection>(warp::reply::json::<Vec<NewsArticle>>(&vec![])), // Return an empty vector in case of error
             }
         });
 
-    // Serve static files (HTML, CSS, JS)
     let static_files = warp::fs::dir("public");
 
-    // Combine the routes with CORS
     let routes = static_files.or(crypto_news).with(cors);
 
-    // Start the server
     warp::serve(routes)
         .run(([127, 0, 0, 1], 8000))
         .await;
